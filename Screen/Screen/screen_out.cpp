@@ -1,53 +1,78 @@
 #define _CRT_SECURE_NO_WARNINGS
-#include <stdio.h>
-#include <string.h>
+
+#include <iostream>
+#include <cstring>
 #include <Windows.h>
 #include <conio.h>
 
+using namespace std;
+
 #define SCREEN_SIZE	79
 
-void draw(char *screen, int bullet_pos, int direction, int player_pos, const char *face)
-{
-	strncpy(screen + bullet_pos, 
-		(direction == 0) ? "===--->" : "<---===", 
-		(direction == 0) ? strlen("===--->") : strlen("<---==="));
 
-	strncpy(screen + player_pos, face, strlen(face));
-
-}
-
-void update(int* bullet_pos, int* direction)
-{
-	if (*direction == 0)
-	{
-		//(*bullet_pos)++;
-		if (*bullet_pos >= SCREEN_SIZE) {
-			*direction = 1;
-			*bullet_pos = SCREEN_SIZE - 1;
-		}
-	}
-	else {
-		//(*bullet_pos)--;
-		if (*bullet_pos < 0) {
-			*direction = 0;
-			*bullet_pos = 0;
-		}
-	}
-}
+struct GameObject {
+	int		pos;
+	char	shape[20];
+};
 
 void clear_screen(char *screen)
 {
 	memset(screen, ' ', SCREEN_SIZE);
 }
 
+void draw(char *screen, const GameObject& player, const GameObject& enemy, const GameObject& bullet)
+{
+	if (screen == NULL) return;
+
+	if (player != NULL && player_pos >=0 && player_pos < SCREEN_SIZE ) {
+		strncpy(screen + player_pos, player, strlen(player));
+	}
+	if (enemy != NULL && enemy_pos >= 0 && enemy_pos < SCREEN_SIZE) {
+		strncpy(screen + enemy_pos, enemy, strlen(enemy));
+	}
+	if (bullet_pos != -1) {
+		if (player_pos < enemy_pos)
+		{
+			strncpy(screen + bullet_pos, ">", strlen(">"));
+		}
+		else if ( player_pos > enemy_pos)
+		{
+			strncpy(screen + bullet_pos, "<", strlen("<"));
+		}
+	}
+}
+
+void update(GameObject& player, GameObject& enemy, GameObject& bullet)
+{
+	if (*bullet_pos == -1) return;
+
+	if (*bullet_pos == enemy_pos)
+	{
+		*bullet_pos = -1;
+		return;
+	}
+	if (*bullet_pos < 0 || *bullet_pos >= SCREEN_SIZE)
+	{
+		*bullet_pos = -1;
+		return;
+	}
+	
+	if (player_pos < enemy_pos)		(*bullet_pos)++;
+	
+	if (player_pos > enemy_pos)		(*bullet_pos)--;
+	
+}
+
+
+
 void render(char *screen)
 {
 	screen[SCREEN_SIZE] = '\0';
-	printf("%s\r", screen);
+	cout << screen << '\r';
 	Sleep(33);
 }
 
-void process_input(int* player_pos, int* bullet_pos)
+void process_input(GameObject& player, GameObject& enemy, GameObject& bullet)
 {
 	if (_kbhit() == 0) return;
 
@@ -58,29 +83,38 @@ void process_input(int* player_pos, int* bullet_pos)
 		ch = _getch();
 		if (ch == 75) (*player_pos)--;
 		if (ch == 77) (*player_pos)++;
+		if (ch == 80) (*enemy_pos)++;
+		if (ch == 72) (*enemy_pos)--;
 	}
-	else {
-		if (ch == 'a') (*player_pos)--;
-		if (ch == 's') (*player_pos)++;
-		if (ch == 'w') (*bullet_pos)++;
-		if (ch == 'x') (*bullet_pos)--;
+	else if (ch == ' ') 
+	{
+		if (*bullet_pos == -1) 
+		{
+			*bullet_pos = *player_pos;
+		}
 	}
 }
 
 int main()
-{
-	int bullet_pos = 0;
+{	
 	char screen[SCREEN_SIZE + 1];
-	int direction = 0;
-	char face[] = "^___________^";
-	int player_pos = 10;
+	GameObject player;
+	GameObject enemy;
+	GameObject bullet;
+
+	strcpy(player.shape, "^_^");
+	player.pos = rand() % SCREEN_SIZE;
+	strcpy(enemy.shape, "*__*");
+	enemy.pos = rand() % SCREEN_SIZE;
+	strcpy(bullet.shape, ">");
+	bullet.pos = -1;
 
 	while (1)
 	{
 		clear_screen(screen);
-		process_input(&player_pos, &bullet_pos);
-		draw(screen, bullet_pos, direction, player_pos, face);			
-		update(&bullet_pos, &direction);
+		process_input(player, enemy, bullet);
+		draw(screen, player, enemy, bullet);
+		update(player, enemy, bullet);
 		render(screen);			
 	}
 	return 0;
