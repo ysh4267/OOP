@@ -21,7 +21,7 @@ void clear_screen(char *canvas)
 	canvas[SCREEN_SIZE] = '\0';
 }
 
-void process_input(GameObject& player, GameObject& enemy, GameObject& bullet)
+void process_input(struct GameObject* player, struct GameObject* enemy, struct GameObject* bullet)
 {
 	if (_kbhit() == 0) return;
 
@@ -32,74 +32,74 @@ void process_input(GameObject& player, GameObject& enemy, GameObject& bullet)
 		switch (ch)
 		{
 		case 75:
-			player.pos--; 
+			player->pos--; 
 			break;
 		case 77:
-			player.pos++;
+			player->pos++;
 			break;
 		case 72:
-			enemy.pos--;
+			enemy->pos--;
 			break;
 		case 80:
-			enemy.pos++;
+			enemy->pos++;
 			break;
 		}
 	}
 	else if (ch == ' ')
 	{
-		if (bullet.pos == -1)
+		if (bullet->pos == -1)
 		{
-			bullet.pos = player.pos;
+			bullet->pos = player->pos;
 		}
 	}
 }
 
-void draw(char *canvas, const GameObject& player, const GameObject& enemy, const GameObject& bullet)
+void draw(char *canvas, const struct GameObject* player, const struct GameObject* enemy, const struct GameObject* bullet)
 {
 	if (canvas == NULL) return;
 
-	if (player.pos >= 0 && player.pos < SCREEN_SIZE)
+	if (player != NULL && player->pos >= 0 && player->pos < SCREEN_SIZE)
 	{
-		strncpy(canvas + player.pos, player.shape, strlen(player.shape));
+		strncpy(canvas + player->pos, player->shape, strlen(player->shape));
 	}
-	if (enemy.pos >= 0 && enemy.pos < SCREEN_SIZE)
+	if (enemy->pos >= 0 && enemy->pos < SCREEN_SIZE)
 	{
-		strncpy(canvas + enemy.pos, enemy.shape, strlen(enemy.shape));
+		strncpy(canvas + enemy->pos, enemy->shape, strlen(enemy->shape));
 	}
-	if (bullet.pos != -1)
+	if (bullet->pos != -1)
 	{
-		if (player.pos < enemy.pos)
+		if (player->pos < enemy->pos)
 		{
-			strncpy(canvas + bullet.pos, ">", strlen(">"));
+			strncpy(canvas + bullet->pos, ">", strlen(">"));
 		}
-		else if (player.pos > enemy.pos)
+		else if (player->pos > enemy->pos)
 		{
-			strncpy(canvas + bullet.pos, "<", strlen("<"));
+			strncpy(canvas + bullet->pos, "<", strlen("<"));
 		}
 	}
 }
 
-void update(const GameObject& player, const GameObject& enemy, GameObject& bullet)
+void update(const struct GameObject* player, const struct GameObject* enemy, struct GameObject* bullet)
 {
-	if (bullet.pos == -1) return;
+	if (bullet->pos == -1) return;
 
-	if (bullet.pos < 0 || bullet.pos >= SCREEN_SIZE)
+	if (bullet->pos < 0 || bullet->pos >= SCREEN_SIZE)
 	{
-		bullet.pos = -1;
+		bullet->pos = -1;
 		return;
 	}
-	if (bullet.pos == enemy.pos)
+	if (bullet->pos == enemy->pos)
 	{
-		bullet.pos = -1;
+		bullet->pos = -1;
 		return;
 	}
-	if (player.pos < enemy.pos)
+	if (player->pos < enemy->pos)
 	{
-		bullet.pos++;
+		bullet->pos++;
 	}
-	else if (player.pos > enemy.pos)
+	else if (player->pos > enemy->pos)
 	{
-		bullet.pos--;
+		bullet->pos--;
 	}
 }
 
@@ -129,9 +129,9 @@ int main()
 	while (1)
 	{
 		clear_screen(canvas);
-		process_input(player, enemy, bullet);
-		draw(canvas, player, enemy, bullet);
-		update(player, enemy, bullet);
+		process_input(&player, &enemy, &bullet);
+		draw(canvas, &player, &enemy, &bullet);
+		update(&player, &enemy, &bullet);
 		render(canvas);
 	}
 	return 0;
