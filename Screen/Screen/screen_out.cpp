@@ -32,24 +32,24 @@ void process_input(GameObject& player, GameObject& enemy, GameObject& bullet)
 		switch (ch)
 		{
 		case 75:
-			(*player_pos)--; 
+			player.pos--; 
 			break;
 		case 77:
-			(*player_pos)++;
+			player.pos++;
 			break;
 		case 72:
-			(*enemy_pos)--;
+			enemy.pos--;
 			break;
 		case 80:
-			(*enemy_pos)++;
+			enemy.pos++;
 			break;
 		}
 	}
 	else if (ch == ' ')
 	{
-		if (*bullet_pos == -1)
+		if (bullet.pos == -1)
 		{
-			*bullet_pos = *player_pos;
+			bullet.pos = player.pos;
 		}
 	}
 }
@@ -58,48 +58,48 @@ void draw(char *canvas, const GameObject& player, const GameObject& enemy, const
 {
 	if (canvas == NULL) return;
 
-	if (player != NULL && player_pos >= 0 && player_pos < SCREEN_SIZE)
+	if (player.pos >= 0 && player.pos < SCREEN_SIZE)
 	{
-		strncpy(canvas + player_pos, player, strlen(player));
+		strncpy(canvas + player.pos, player.shape, strlen(player.shape));
 	}
-	if (enemy != NULL && enemy_pos >= 0 && enemy_pos < SCREEN_SIZE)
+	if (enemy.pos >= 0 && enemy.pos < SCREEN_SIZE)
 	{
-		strncpy(canvas + enemy_pos, enemy, strlen(enemy));
+		strncpy(canvas + enemy.pos, enemy.shape, strlen(enemy.shape));
 	}
-	if (bullet_pos != -1)
+	if (bullet.pos != -1)
 	{
-		if (player_pos < enemy_pos)
+		if (player.pos < enemy.pos)
 		{
-			strncpy(canvas + bullet_pos, ">", strlen(">"));
+			strncpy(canvas + bullet.pos, ">", strlen(">"));
 		}
-		if (player_pos > enemy_pos)
+		else if (player.pos > enemy.pos)
 		{
-			strncpy(canvas + bullet_pos, "<", strlen("<"));
+			strncpy(canvas + bullet.pos, "<", strlen("<"));
 		}
 	}
 }
 
 void update(const GameObject& player, const GameObject& enemy, GameObject& bullet)
 {
-	if (*bullet_pos == -1) return;
+	if (bullet.pos == -1) return;
 
-	if (*bullet_pos < 0 || *bullet_pos >= SCREEN_SIZE)
+	if (bullet.pos < 0 || bullet.pos >= SCREEN_SIZE)
 	{
-		*bullet_pos = -1;
+		bullet.pos = -1;
 		return;
 	}
-	if (*bullet_pos == enemy_pos)
+	if (bullet.pos == enemy.pos)
 	{
-		*bullet_pos = -1;
+		bullet.pos = -1;
 		return;
 	}
-	if (player_pos < enemy_pos)
+	if (player.pos < enemy.pos)
 	{
-		(*bullet_pos)++;
+		bullet.pos++;
 	}
-	else if (player_pos > enemy_pos)
+	else if (player.pos > enemy.pos)
 	{
-		(*bullet_pos)--;
+		bullet.pos--;
 	}
 }
 
