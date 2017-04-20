@@ -13,6 +13,13 @@ struct GameObject {
 	char	shape[16];
 	int		pos;
 
+	void draw(char *canvas) const // 함수 본체 앞에 const를 선언하는 것은 매우 중요한 의미를 부여하고 있습니다.
+	{
+		if (pos >= 0 && pos < SCREEN_SIZE)
+		{
+			strncpy(canvas + pos, shape, strlen(shape));
+		}
+	}
 };
 
 void clear_screen(char *canvas)
@@ -62,14 +69,9 @@ void draw(char *canvas, const struct GameObject* player, const struct GameObject
 {
 	if (canvas == NULL) return;
 
-	if (player != NULL && player->pos >= 0 && player->pos < SCREEN_SIZE)
-	{
-		strncpy(canvas + player->pos, player->shape, strlen(player->shape));
-	}
-	if (enemy->pos >= 0 && enemy->pos < SCREEN_SIZE)
-	{
-		strncpy(canvas + enemy->pos, enemy->shape, strlen(enemy->shape));
-	}
+	player->draw(canvas);
+	enemy->draw(canvas);
+
 	for (int i = 0; i < bullets_len; i++)
 	{
 		if (bullets[i].pos == -1) continue;
