@@ -21,7 +21,7 @@ void clear_screen(char *canvas)
 	canvas[SCREEN_SIZE] = '\0';
 }
 
-void process_input(struct GameObject* player, struct GameObject* enemy, struct GameObject* bullet)
+void process_input(struct GameObject* player, struct GameObject* enemy, struct GameObject bullets[], int bullets_len)
 {
 	if (_kbhit() == 0) return;
 
@@ -47,14 +47,18 @@ void process_input(struct GameObject* player, struct GameObject* enemy, struct G
 	}
 	else if (ch == ' ')
 	{
-		if (bullet->pos == -1)
+		for (int i = 0; i < bullets_len; i++)
 		{
-			bullet->pos = player->pos;
+			if (bullets[i].pos == -1)
+			{
+				bullets[i].pos = player->pos;
+				break; // exit from for statement
+			}
 		}
 	}
 }
 
-void draw(char *canvas, const struct GameObject* player, const struct GameObject* enemy, const struct GameObject* bullet)
+void draw(char *canvas, const struct GameObject* player, const struct GameObject* enemy, const struct GameObject bullets[], int bullets_len)
 {
 	if (canvas == NULL) return;
 
@@ -66,40 +70,47 @@ void draw(char *canvas, const struct GameObject* player, const struct GameObject
 	{
 		strncpy(canvas + enemy->pos, enemy->shape, strlen(enemy->shape));
 	}
-	if (bullet->pos != -1)
+	for (int i = 0; i < bullets_len; i++)
 	{
+		if (bullets[i].pos == -1) continue;
+
+		// now, bullets[i].pos != -1 
+		
 		if (player->pos < enemy->pos)
 		{
-			strncpy(canvas + bullet->pos, ">", strlen(">"));
+			strncpy(canvas + bullets[i].pos, ">", strlen(">"));
 		}
 		else if (player->pos > enemy->pos)
 		{
-			strncpy(canvas + bullet->pos, "<", strlen("<"));
+			strncpy(canvas + bullets[i].pos, "<", strlen("<"));
 		}
 	}
 }
 
-void update(const struct GameObject* player, const struct GameObject* enemy, struct GameObject* bullet)
+void update(const struct GameObject* player, const struct GameObject* enemy, struct GameObject bullets[], int bullets_len)
 {
-	if (bullet->pos == -1) return;
+	for (int i = 0; i < bullets_len; i++)
+	{
+		if (bullets[i].pos == -1) continue;
 
-	if (bullet->pos < 0 || bullet->pos >= SCREEN_SIZE)
-	{
-		bullet->pos = -1;
-		return;
-	}
-	if (bullet->pos == enemy->pos)
-	{
-		bullet->pos = -1;
-		return;
-	}
-	if (player->pos < enemy->pos)
-	{
-		bullet->pos++;
-	}
-	else if (player->pos > enemy->pos)
-	{
-		bullet->pos--;
+		if (bullets[i].pos < 0 || bullets[i].pos >= SCREEN_SIZE)
+		{
+			bullets[i].pos = -1;
+			continue;
+		}
+		if (bullets[i].pos == enemy->pos)
+		{
+			bullets[i].pos = -1;
+			continue;
+		}
+		if (player->pos < enemy->pos)
+		{
+			bullets[i].pos++;
+		}
+		else if (player->pos > enemy->pos)
+		{
+			bullets[i].pos--;
+		}
 	}
 }
 
@@ -113,25 +124,27 @@ void render(char *canvas)
 int main()
 {
 	char	canvas[SCREEN_SIZE + 1];
-	GameObject player;
+	GameObject player;	
+	GameObject enemy;
+	const int bullets_len = 30;
+	GameObject bullets[bullets_len];
+
 	strcpy(player.shape, "^_^");
 	player.pos = rand() % SCREEN_SIZE;
-
-	GameObject enemy;
-	strcpy(enemy.shape,"*_*");
+	strcpy(enemy.shape, "*_*");
 	enemy.pos = rand() % SCREEN_SIZE;
-
-	GameObject bullet;
-	strcpy(bullet.shape, ">");
-	bullet.pos = -1;
-
-
+	for (int i = 0; i < bullets_len; i++)
+	{
+		strcpy(bullets[i].shape, ">");
+		bullets[i].pos = -1;
+	}
+	
 	while (1)
 	{
 		clear_screen(canvas);
-		process_input(&player, &enemy, &bullet);
-		draw(canvas, &player, &enemy, &bullet);
-		update(&player, &enemy, &bullet);
+		process_input(&player, &enemy, bullets, bullets_len);
+		draw(canvas, &player, &enemy, bullets, bullets_len);
+		update(&player, &enemy, bullets, bullets_len);
 		render(canvas);
 	}
 	return 0;
