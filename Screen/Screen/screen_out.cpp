@@ -9,61 +9,75 @@ using namespace std;
 
 #define SCREEN_SIZE	79
 
-
 struct GameObject {
 	int		pos;
 	char	shape[20];
+
+	void	draw(char *screen) const
+	{
+		strncpy(screen + pos, shape, strlen(shape));
+	}
 };
+
+struct Bullet {
+	struct GameObject	myData;
+
+	void	draw(char *screen, const struct GameObject *player, const struct GameObject *enemy) const
+	{
+		if (myData.pos == -1) return;
+
+		if (screen == NULL || player == NULL || enemy == NULL) return;
+		
+		if (player->pos < enemy->pos) {
+			strncpy(screen + myData.pos, ">", strlen(">"));
+		}
+		else if (player->pos > enemy->pos) {
+			strncpy(screen + myData.pos, "<", strlen("<"));
+		}
+	}
+};
+
 
 void clear_screen(char *screen)
 {
 	memset(screen, ' ', SCREEN_SIZE);
 }
 
-void draw(char *screen, const GameObject& player, const GameObject& enemy, const GameObject& bullet)
+void draw(char *screen, const struct GameObject* player, const struct GameObject* enemy, const struct Bullet bullets[], int bullets_len)
 {
 	if (screen == NULL) return;
 
-	if (player != NULL && player_pos >=0 && player_pos < SCREEN_SIZE ) {
-		strncpy(screen + player_pos, player, strlen(player));
-	}
-	if (enemy != NULL && enemy_pos >= 0 && enemy_pos < SCREEN_SIZE) {
-		strncpy(screen + enemy_pos, enemy, strlen(enemy));
-	}
-	if (bullet_pos != -1) {
-		if (player_pos < enemy_pos)
-		{
-			strncpy(screen + bullet_pos, ">", strlen(">"));
-		}
-		else if ( player_pos > enemy_pos)
-		{
-			strncpy(screen + bullet_pos, "<", strlen("<"));
-		}
+	player->draw(screen);
+	enemy->draw(screen);
+
+	for (int i = 0; i < bullets_len; i++)
+	{
+		bullets[i].draw(screen, player, enemy);
 	}
 }
 
-void update(GameObject& player, GameObject& enemy, GameObject& bullet)
+void update(const struct GameObject* player, const struct GameObject* enemy, struct Bullet bullets[], int bullets_len)
 {
-	if (*bullet_pos == -1) return;
+	for (int i = 0; i < bullets_len; i++)
+	{
+		if (bullets[i].myData.pos == -1) continue;
 
-	if (*bullet_pos == enemy_pos)
-	{
-		*bullet_pos = -1;
-		return;
+		if (bullets[i].myData.pos == enemy->pos)
+		{
+			bullets[i].myData.pos = -1;
+			continue;
+		}
+
+		if (bullets[i].myData.pos < 0 || bullets[i].myData.pos >= SCREEN_SIZE)
+		{
+			bullets[i].myData.pos = -1;
+			continue;
+		}
+
+		if (player->pos < enemy->pos)		bullets[i].myData.pos++;
+		else if (player->pos > enemy->pos)	bullets[i].myData.pos--;
 	}
-	if (*bullet_pos < 0 || *bullet_pos >= SCREEN_SIZE)
-	{
-		*bullet_pos = -1;
-		return;
-	}
-	
-	if (player_pos < enemy_pos)		(*bullet_pos)++;
-	
-	if (player_pos > enemy_pos)		(*bullet_pos)--;
-	
 }
-
-
 
 void render(char *screen)
 {
@@ -72,7 +86,7 @@ void render(char *screen)
 	Sleep(33);
 }
 
-void process_input(GameObject& player, GameObject& enemy, GameObject& bullet)
+void process_input(struct GameObject* player, struct GameObject* enemy, struct Bullet bullets[], int bullets_len)
 {
 	if (_kbhit() == 0) return;
 
@@ -81,16 +95,20 @@ void process_input(GameObject& player, GameObject& enemy, GameObject& bullet)
 	if (ch == 224)
 	{
 		ch = _getch();
-		if (ch == 75) (*player_pos)--;
-		if (ch == 77) (*player_pos)++;
-		if (ch == 80) (*enemy_pos)++;
-		if (ch == 72) (*enemy_pos)--;
+		if (ch == 75) player->pos--;
+		if (ch == 77) player->pos++;
+		if (ch == 80) enemy->pos++;
+		if (ch == 72) enemy->pos--;
 	}
-	else if (ch == ' ') 
+	else if (ch == ' ')
 	{
-		if (*bullet_pos == -1) 
+		for (int i = 0; i < bullets_len; i++)
 		{
-			*bullet_pos = *player_pos;
+			if (bullets[i].myData.pos != -1) continue;
+
+			// found a bullet ready to shoot
+			bullets[i].myData.pos = player->pos;
+			break; // exit from the loop
 		}
 	}
 }
@@ -98,23 +116,27 @@ void process_input(GameObject& player, GameObject& enemy, GameObject& bullet)
 int main()
 {	
 	char screen[SCREEN_SIZE + 1];
-	GameObject player;
-	GameObject enemy;
-	GameObject bullet;
+	const int bullets_len = 30;
+	struct GameObject player;
+	struct GameObject enemy;
+	struct Bullet bullets[bullets_len];
 
 	strcpy(player.shape, "^_^");
 	player.pos = rand() % SCREEN_SIZE;
 	strcpy(enemy.shape, "*__*");
 	enemy.pos = rand() % SCREEN_SIZE;
-	strcpy(bullet.shape, ">");
-	bullet.pos = -1;
-
+	for (int i = 0; i < bullets_len; i++)
+	{
+		strcpy(bullets[i].myData.shape, ">");
+		bullets[i].myData.pos = -1;
+	}
+	
 	while (1)
 	{
 		clear_screen(screen);
-		process_input(player, enemy, bullet);
-		draw(screen, player, enemy, bullet);
-		update(player, enemy, bullet);
+		process_input(&player, &enemy, bullets, bullets_len);
+		draw(screen, &player, &enemy, bullets, bullets_len);
+		update( &player, &enemy, bullets, bullets_len);
 		render(screen);			
 	}
 	return 0;
