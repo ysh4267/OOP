@@ -9,37 +9,96 @@
 
 using namespace std;
 
-struct GameObject {
-	char	shape[16];
+class GameObject {
+	char 	shape[16];
 	int		pos;
 
-	void draw(char *canvas) const // 함수 본체 앞에 const를 선언하는 것은 매우 중요한 의미를 부여하고 있습니다.
+public:
+	GameObject(const char *shape, int pos) : pos(pos) { strcpy(this->shape, shape); }
+	
+	void SetShape(const char *shape) { strcpy(this->shape, shape); }
+
+	void SetPos(int pos) { this->pos = pos; }
+	int  GetPos() const { return this->pos; }
+
+	void IncreasePos() { this->pos++; }
+	void DecreasePos() { this->pos--; }	
+
+	void Draw(char *canvas) const
 	{
-		if (pos >= 0 && pos < SCREEN_SIZE)
-		{
-			strncpy(canvas + pos, shape, strlen(shape));
-		}
+		if (pos < 0 || pos >= SCREEN_SIZE) return;
+
+		strncpy(canvas + pos, shape, strlen(shape) );
 	}
 };
 
-struct Bullet {
-	struct GameObject  myData;
+class Bullet {
+	GameObject  myData;
+	bool 		isFired;
+	GameObject* target;
 
-	void draw(char *canvas, const struct GameObject *player, const struct GameObject* enemy) const
-	{
-		if (myData.pos == -1 || player == NULL || enemy == NULL) return;
+	void reset() { isFired = false; }
 
-		if (myData.pos >= 0 && myData.pos < SCREEN_SIZE)
-		{
-			if (player->pos < enemy->pos)
-			{
-				strncpy(canvas + myData.pos, ">", strlen(">"));
-			}
-			else if (player->pos > enemy->pos)
-			{
-				strncpy(canvas + myData.pos, "<", strlen("<"));
-			}
+public:
+	Bullet() : isFired(false), myData( ">", 0), target(nullptr) {}
+
+	void Fire(const GameObject& player, GameObject& enemy)
+	{ 
+		int player_pos = player.GetPos();
+		int target_pos = enemy.GetPos();
+		
+		if (player_pos == target_pos) return;
+
+		if (player_pos < target_pos) {
+			myData.SetShape(">");
+		} else {			
+			myData.SetShape("<");
 		}
+
+		SetPos( player_pos );
+		target = &enemy;
+		isFired = true;
+	}
+
+	void SetPos(int pos) { myData.SetPos(pos); }
+	int GetPos() const { return myData.GetPos(); }
+
+	void IncreasePos() { myData.IncreasePos(); }
+	void DecreasePos() { myData.DecreasePos(); }
+
+	bool IsFired() { return isFired; }
+
+	void Update()
+	{
+		if (isFired == false || !target) return;
+
+		int pos = myData.GetPos();
+		int target_pos = target->GetPos();
+
+		if (pos < 0 || pos >= SCREEN_SIZE)
+		{
+			reset();
+			return;
+		}
+
+		if (pos == target_pos) 
+		{
+			reset();
+			return;
+		}
+
+		if (pos < target_pos) {
+			IncreasePos();
+		} else {
+			DecreasePos();
+		}
+	}	
+
+	void Draw(char *canvas) const
+	{
+		if (isFired == false || target == nullptr) return;
+
+		myData.Draw(canvas);
 	}
 };
 
@@ -49,7 +108,7 @@ void clear_screen(char *canvas)
 	canvas[SCREEN_SIZE] = '\0';
 }
 
-void process_input(struct GameObject* player, struct GameObject* enemy, struct Bullet bullets[], int bullets_len)
+void process_input(GameObject& player, GameObject& enemy, Bullet bullets[], int bullets_len)
 {
 	if (_kbhit() == 0) return;
 
@@ -60,16 +119,16 @@ void process_input(struct GameObject* player, struct GameObject* enemy, struct B
 		switch (ch)
 		{
 		case 75:
-			player->pos--; 
+			player.IncreasePos();
 			break;
 		case 77:
-			player->pos++;
+			player.DecreasePos();
 			break;
 		case 72:
-			enemy->pos--;
+			enemy.IncreasePos();
 			break;
 		case 80:
-			enemy->pos++;
+			enemy.DecreasePos();
 			break;
 		}
 	}
@@ -77,51 +136,32 @@ void process_input(struct GameObject* player, struct GameObject* enemy, struct B
 	{
 		for (int i = 0; i < bullets_len; i++)
 		{
-			if (bullets[i].myData.pos == -1)
+			if (bullets[i].IsFired() == false)
 			{
-				bullets[i].myData.pos = player->pos;
+				bullets[i].Fire(player, enemy);
 				break; // exit from for statement
 			}
 		}
 	}
 }
 
-void draw(char *canvas, const struct GameObject* player, const struct GameObject* enemy, const struct Bullet bullets[], int bullets_len)
+void draw(char *canvas, const GameObject& player, const GameObject& enemy, const Bullet bullets[], int bullets_len)
 {
 	if (canvas == NULL) return;
 
-	player->draw(canvas);
-	enemy->draw(canvas);
+	player.Draw(canvas);
+	enemy.Draw(canvas);
 	for (int i= 0; i < bullets_len; i++)
 	{
-		bullets[i].draw(canvas, player, enemy);
+		bullets[i].Draw(canvas);
 	}
 }
 
-void update(const struct GameObject* player, const struct GameObject* enemy, struct Bullet bullets[], int bullets_len)
+void update(const GameObject& player, const GameObject& enemy, Bullet bullets[], int bullets_len)
 {
 	for (int i = 0; i < bullets_len; i++)
 	{
-		if (bullets[i].myData.pos == -1) continue;
-
-		if (bullets[i].myData.pos < 0 || bullets[i].myData.pos >= SCREEN_SIZE)
-		{
-			bullets[i].myData.pos = -1;
-			continue;
-		}
-		if (bullets[i].myData.pos == enemy->pos)
-		{
-			bullets[i].myData.pos = -1;
-			continue;
-		}
-		if (player->pos < enemy->pos)
-		{
-			bullets[i].myData.pos++;
-		}
-		else if (player->pos > enemy->pos)
-		{
-			bullets[i].myData.pos--;
-		}
+		bullets[i].Update();
 	}
 }
 
@@ -135,27 +175,17 @@ void render(char *canvas)
 int main()
 {
 	char	canvas[SCREEN_SIZE + 1];
-	GameObject player;	
-	GameObject enemy;
+	GameObject player("^_^", rand() % SCREEN_SIZE);	
+	GameObject enemy("*_*", rand() % SCREEN_SIZE);	
 	const int bullets_len = 30;
 	Bullet bullets[bullets_len];
 
-	strcpy(player.shape, "^_^");
-	player.pos = rand() % SCREEN_SIZE;
-	strcpy(enemy.shape, "*_*");
-	enemy.pos = rand() % SCREEN_SIZE;
-	for (int i = 0; i < bullets_len; i++)
-	{
-		strcpy(bullets[i].myData.shape, ">");
-		bullets[i].myData.pos = -1;
-	}
-	
 	while (1)
 	{
 		clear_screen(canvas);
-		process_input(&player, &enemy, bullets, bullets_len);
-		draw(canvas, &player, &enemy, bullets, bullets_len);
-		update(&player, &enemy, bullets, bullets_len);
+		process_input(player, enemy, bullets, bullets_len);
+		draw(canvas, player, enemy, bullets, bullets_len);
+		update(player, enemy, bullets, bullets_len);
 		render(canvas);
 	}
 	return 0;
