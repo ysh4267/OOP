@@ -4,6 +4,7 @@
 #include <cstring>
 #include <Windows.h>
 #include <conio.h>
+#include <time.h>  // or simply <ctime>
 
 #define SCREEN_SIZE		79
 
@@ -15,64 +16,98 @@ class GameObject {
 
 public:
 	GameObject(const char *shape, int pos) : pos(pos) { strcpy(this->shape, shape); }
-	
+
 	void SetShape(const char *shape) { strcpy(this->shape, shape); }
 
 	void SetPos(int pos) { this->pos = pos; }
 	int  GetPos() const { return this->pos; }
 
 	void IncreasePos() { this->pos++; }
-	void DecreasePos() { this->pos--; }	
+	void DecreasePos() { this->pos--; }
+
+	void Update() {}
 
 	void Draw(char *canvas) const
 	{
 		if (pos < 0 || pos >= SCREEN_SIZE) return;
 
-		strncpy(canvas + pos, shape, strlen(shape) );
+		strncpy(canvas + pos, shape, strlen(shape));
 	}
 };
 
-class Bullet {
-	GameObject  myData;
-	bool 		isFired;
-	GameObject* target;
-
-	void reset() { isFired = false; }
+class Player : public GameObject {
 
 public:
-	Bullet() : isFired(false), myData( ">", 0), target(nullptr) {}
+	Player() : GameObject("^_^", rand() % SCREEN_SIZE ) {}
+};
 
-	void Fire(const GameObject& player, GameObject& enemy)
-	{ 
+class Enemy : public GameObject {
+	int hp;
+	int isAlive;
+
+public:
+	Enemy(int hp) : hp(hp), isAlive(true), GameObject("*_*", rand() % SCREEN_SIZE ) {}
+
+	void OnAttacked()
+	{
+		if (hp > 0) --hp;
+		if (hp <= 0) isAlive = false;
+	}
+
+	// overriding
+	void Draw(char *canvas) const
+	{
+		if (isAlive == false) return;		
+		GameObject::Draw(canvas);
+	}
+};
+
+class Bullet : public GameObject {
+	bool 		isFired;
+	Enemy* 		target;
+	clock_t		firedTicks;
+
+	void reset() { isFired = false; firedTicks = 0l; target = nullptr; }
+
+public:
+	Bullet() : isFired(false), GameObject(">", 0), target(nullptr), firedTicks(0l) {}
+
+	void Fire(const Player& player, Enemy& enemy)
+	{
 		int player_pos = player.GetPos();
 		int target_pos = enemy.GetPos();
-		
+
 		if (player_pos == target_pos) return;
 
 		if (player_pos < target_pos) {
-			myData.SetShape(">");
-		} else {			
-			myData.SetShape("<");
+			SetShape(">");
+		}
+		else {
+			SetShape("<");
 		}
 
-		SetPos( player_pos );
+		SetPos(player_pos);
 		target = &enemy;
-		isFired = true;
+		firedTicks = clock();
 	}
 
-	void SetPos(int pos) { myData.SetPos(pos); }
-	int GetPos() const { return myData.GetPos(); }
+	bool IsUsed() { return isFired || firedTicks != 0l; }
 
-	void IncreasePos() { myData.IncreasePos(); }
-	void DecreasePos() { myData.DecreasePos(); }
-
-	bool IsFired() { return isFired; }
-
+	//overriding
 	void Update()
 	{
-		if (isFired == false || !target) return;
+		if (!target) return;
 
-		int pos = myData.GetPos();
+		if (isFired == false) {
+			if (firedTicks == 0l) return;
+
+			// 만일 다음 라인을 comment out한다면 5초후 발사 기능이 사라짐.
+			if ( ((clock() - firedTicks) / CLOCKS_PER_SEC) < 5) return;
+
+			isFired = true;
+		}
+
+		int pos = GetPos();
 		int target_pos = target->GetPos();
 
 		if (pos < 0 || pos >= SCREEN_SIZE)
@@ -83,6 +118,7 @@ public:
 
 		if (pos == target_pos) 
 		{
+			target->OnAttacked();
 			reset();
 			return;
 		}
@@ -92,13 +128,14 @@ public:
 		} else {
 			DecreasePos();
 		}
-	}	
+	}
 
+	// overriding
 	void Draw(char *canvas) const
 	{
 		if (isFired == false || target == nullptr) return;
 
-		myData.Draw(canvas);
+		GameObject::Draw(canvas);
 	}
 };
 
@@ -108,7 +145,7 @@ void clear_screen(char *canvas)
 	canvas[SCREEN_SIZE] = '\0';
 }
 
-void process_input(GameObject& player, GameObject& enemy, Bullet bullets[], int bullets_len)
+void process_input(Player& player, Enemy& enemy, Bullet bullets[], int bullets_len)
 {
 	if (_kbhit() == 0) return;
 
@@ -136,7 +173,7 @@ void process_input(GameObject& player, GameObject& enemy, Bullet bullets[], int 
 	{
 		for (int i = 0; i < bullets_len; i++)
 		{
-			if (bullets[i].IsFired() == false)
+			if (bullets[i].IsUsed() == false)
 			{
 				bullets[i].Fire(player, enemy);
 				break; // exit from for statement
@@ -145,7 +182,7 @@ void process_input(GameObject& player, GameObject& enemy, Bullet bullets[], int 
 	}
 }
 
-void draw(char *canvas, const GameObject& player, const GameObject& enemy, const Bullet bullets[], int bullets_len)
+void draw(char *canvas, const Player& player, const Enemy& enemy, const Bullet bullets[], int bullets_len)
 {
 	if (canvas == NULL) return;
 
@@ -157,8 +194,10 @@ void draw(char *canvas, const GameObject& player, const GameObject& enemy, const
 	}
 }
 
-void update(const GameObject& player, const GameObject& enemy, Bullet bullets[], int bullets_len)
+void update(Player& player, Enemy& enemy, Bullet bullets[], int bullets_len)
 {
+	player.Update();
+	enemy.Update();
 	for (int i = 0; i < bullets_len; i++)
 	{
 		bullets[i].Update();
@@ -175,9 +214,9 @@ void render(char *canvas)
 int main()
 {
 	char	canvas[SCREEN_SIZE + 1];
-	GameObject player("^_^", rand() % SCREEN_SIZE);	
-	GameObject enemy("*_*", rand() % SCREEN_SIZE);	
-	const int bullets_len = 30;
+	Player player;	
+	Enemy  enemy(10);	
+	const int bullets_len = 5;
 	Bullet bullets[bullets_len];
 
 	while (1)
