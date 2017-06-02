@@ -11,6 +11,7 @@
 using namespace std;
 
 class GameObject {
+<<<<<<< HEAD
 	char 	shape[16];
 	int		pos;
 
@@ -18,6 +19,15 @@ public:
 	GameObject(const char *shape, int pos) : pos(pos) { strcpy(this->shape, shape); }
 
 	void SetShape(const char *shape) { strcpy(this->shape, shape); }
+=======
+	string 	shape;
+	int		pos;
+
+public:
+	GameObject(const char *shape, int pos) : shape(shape), pos(pos) {}
+
+	void SetShape(const char *shape) { this->shape = shape; }
+>>>>>>> refs/remotes/origin/master
 
 	void SetPos(int pos) { this->pos = pos; }
 	int  GetPos() const { return this->pos; }
@@ -31,7 +41,11 @@ public:
 	{
 		if (pos < 0 || pos >= SCREEN_SIZE) return;
 
+<<<<<<< HEAD
 		strncpy(canvas + pos, shape, strlen(shape));
+=======
+		strncpy(canvas + pos, shape.c_str(), shape.size() );
+>>>>>>> refs/remotes/origin/master
 	}
 };
 
