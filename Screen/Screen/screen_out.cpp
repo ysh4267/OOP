@@ -55,8 +55,8 @@ public:
 };
 
 class Enemy : public GameObject {
-	int hp;
-	int isAlive;
+	int  hp;
+	bool isAlive;
 
 public:
 	Enemy(int hp) : hp(hp), isAlive(true), GameObject("*_*", rand() % SCREEN_SIZE ) {}
@@ -66,6 +66,8 @@ public:
 		if (hp > 0) --hp;
 		if (hp <= 0) isAlive = false;
 	}
+
+	bool IsAlive() { return isAlive;  }
 
 	// overriding
 	void ProcessInput(int major, int minor)
@@ -180,50 +182,100 @@ class GameObjectManager {
 	{
 		if (_kbhit() == 0) return;
 		int minor = 0;
+		Player *player = nullptr;
+		Enemy  *enemy = nullptr;
+		Bullet *bullet = nullptr;
 
 		int major = _getch();
 		if (major == 224) minor = _getch();
 
-		static_cast<Player *>(gameObjects[0])->ProcessInput(major, minor); // downcasting
-		static_cast<Enemy *>(gameObjects[1])->ProcessInput(major, minor);  // downcasting
+		GameObject* obj;
+		for (int i = 0; i < maxGameObjects; i++)
+		{
+			obj = gameObjects[i];
+			if (obj == nullptr) continue;
+
+			Player *p = dynamic_cast<Player *>(obj);
+			if (p) {
+				p->ProcessInput(major, minor);
+				player = p;
+				continue;
+			}
+			Enemy *e = dynamic_cast<Enemy *>(obj);
+			if (e) {
+				e->ProcessInput(major, minor);
+				enemy = e;
+			}
+		}
 
 		if (major == ' ')
 		{
-			int i = 2;
+			int i = 0;
+			if (player == nullptr || enemy == nullptr) return;
 			for (; i < maxGameObjects; i++)
 			{
+				Bullet *bullet;
 				if (gameObjects[i] == nullptr) {
-					gameObjects[i] = new Bullet; // upcasting
-					break;
+					bullet = new Bullet;
+					gameObjects[i] = bullet; // upcasting
 				}
-				if (!static_cast<Bullet *>(gameObjects[i])->IsUsed()) break; // downcasting
+				else {
+					bullet = dynamic_cast<Bullet *>(gameObjects[i]);
+					if (bullet) {
+						if (bullet->IsUsed()) continue;
+					} else {
+						continue;
+					}
+				}
+				bullet->Fire(*player, *enemy);
+				break;
 			}
-			if (i == maxGameObjects) return;
-			static_cast<Bullet *>(gameObjects[i])->Fire(*static_cast<Player *>(gameObjects[0]), *static_cast<Enemy *>(gameObjects[1])); // downcasting
 		}
 	}
 
 	void draw()
 	{
-		static_cast<Player *>(gameObjects[0])->Draw(canvas); // downcasting
-		static_cast<Enemy *>(gameObjects[1])->Draw(canvas);  // downcasting
-		for (int i = 2; i < maxGameObjects; i++)
+		for (int i = 0; i < maxGameObjects; i++)
 		{
 			if (gameObjects[i] == nullptr) continue;
-			Bullet *bullet = static_cast<Bullet *>(gameObjects[i]); // downcasting
-			bullet->Draw(canvas);
+
+			Player *p = dynamic_cast<Player *>(gameObjects[i]);
+			if (p) {
+				p->Draw(canvas);
+				continue;
+			}
+			Enemy *e = dynamic_cast<Enemy *>(gameObjects[i]);
+			if (e) {
+				e->Draw(canvas);
+				continue;
+			}
+			Bullet *b = dynamic_cast<Bullet *>(gameObjects[i]);
+			if (b) {
+				b->Draw(canvas);
+			}
 		}
 	}
 
 	void update()
 	{
-		static_cast<Player *>(gameObjects[0])->Update(); // downcasting
-		static_cast<Enemy *>(gameObjects[1])->Update();  // downcasting
-		for (int i = 2; i < maxGameObjects; i++)
+		for (int i = 0; i < maxGameObjects; i++)
 		{
 			if (gameObjects[i] == nullptr) continue;
-			Bullet *bullet = static_cast<Bullet *>(gameObjects[i]);	 // downcasting
-			bullet->Update();
+
+			Player *p = dynamic_cast<Player *>(gameObjects[i]);
+			if (p) {
+				p->Update();
+				continue;
+			}
+			Enemy *e = dynamic_cast<Enemy *>(gameObjects[i]);
+			if (e) {
+				e->Update();				
+				continue;
+			}
+			Bullet *b = dynamic_cast<Bullet *>(gameObjects[i]);
+			if (b) {
+				b->Update();
+			}
 		}
 	}
 
