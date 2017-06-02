@@ -269,7 +269,11 @@ class GameObjectManager {
 			}
 			Enemy *e = dynamic_cast<Enemy *>(gameObjects[i]);
 			if (e) {
-				e->Update();				
+				e->Update();	
+				if (!e->IsAlive()) {
+					delete gameObjects[i];
+					gameObjects[i] = nullptr;
+				}
 				continue;
 			}
 			Bullet *b = dynamic_cast<Bullet *>(gameObjects[i]);
