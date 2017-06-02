@@ -10,12 +10,20 @@
 
 using namespace std;
 
+enum class GameObjectType {
+	Unknown,
+	Player,
+	Enemy,
+	Bullet
+};
+
 class GameObject {
 	string 	shape;
 	int		pos;
+	GameObjectType type;
 
 public:
-	GameObject(const char *shape, int pos) : shape(shape), pos(pos) {}
+	GameObject(const char *shape, int pos, GameObjectType type=GameObjectType::Unknown) : shape(shape), pos(pos), type(type) {}
 	virtual ~GameObject() {}
 
 	void SetShape(const char *shape) { this->shape = shape; }
@@ -25,6 +33,8 @@ public:
 
 	void IncreasePos() { this->pos++; }
 	void DecreasePos() { this->pos--; }
+
+	bool IsType(GameObjectType type) { return this->type == type; }
 
 	virtual void ProcessInput(int major, int minor) {}
 
@@ -41,7 +51,7 @@ public:
 class Player : public GameObject {
 
 public:
-	Player() : GameObject("^_^", rand() % SCREEN_SIZE ) {}
+	Player() : GameObject("^_^", rand() % SCREEN_SIZE, GameObjectType::Player ) {}
 
 	// overriding
 	void ProcessInput(int major, int minor)
@@ -59,7 +69,7 @@ class Enemy : public GameObject {
 	bool isAlive;
 
 public:
-	Enemy(int hp) : hp(hp), isAlive(true), GameObject("*_*", rand() % SCREEN_SIZE ) {}
+	Enemy(int hp) : hp(hp), isAlive(true), GameObject("*_*", rand() % SCREEN_SIZE, GameObjectType::Enemy ) {}
 
 	void OnAttacked()
 	{
@@ -96,7 +106,7 @@ class Bullet : public GameObject {
 	void reset() { isFired = false; firedTicks = 0l; target = nullptr; }
 
 public:
-	Bullet() : isFired(false), GameObject(">", 0), target(nullptr), firedTicks(0l) {}
+	Bullet() : isFired(false), GameObject(">", 0, GameObjectType::Bullet), target(nullptr), firedTicks(0l) {}
 
 	void Fire(const Player& player, Enemy& enemy)
 	{
@@ -203,29 +213,33 @@ class GameObjectManager {
 			Bullet *bullet = nullptr;
 
 			for (int i=0; i< maxGameObjects; i++) {
-				player = dynamic_cast<Player *>(gameObjects[i]);
-				if (player) break;
+				if (gameObjects[i] && gameObjects[i]->IsType(GameObjectType::Player) )
+				{
+					player = static_cast<Player *>(gameObjects[i]);
+					break;
+				}
 			}
 			for (int i=0; i < maxGameObjects; i++) {
-				enemy = dynamic_cast<Enemy *>(gameObjects[i]);
-				if (enemy) break;
+				if (gameObjects[i] && gameObjects[i]->IsType(GameObjectType::Enemy))
+				{
+					enemy = static_cast<Enemy *>(gameObjects[i]);
+					break;
+				}
 			}
 
 			if (player == nullptr || enemy == nullptr) return;
 			for (int i=0; i < maxGameObjects; i++)
 			{
-				Bullet *bullet;
 				if (gameObjects[i] == nullptr) {
 					bullet = new Bullet;
 					gameObjects[i] = bullet; // upcasting
 				}
+				else if (gameObjects[i]->IsType(GameObjectType::Bullet)) {
+					bullet = static_cast<Bullet *>(gameObjects[i]);
+					if (bullet->IsUsed()) continue;
+				}
 				else {
-					bullet = dynamic_cast<Bullet *>(gameObjects[i]);
-					if (bullet) {
-						if (bullet->IsUsed()) continue;
-					} else {
-						continue;
-					}
+					continue;
 				}
 				bullet->Fire(*player, *enemy);
 				break;
@@ -248,8 +262,8 @@ class GameObjectManager {
 		{
 			if (gameObjects[i] == nullptr) continue;
 			gameObjects[i]->Update();
-			Enemy *enemy = dynamic_cast<Enemy *>(gameObjects[i]);
-			if (enemy) {
+			if (gameObjects[i]->IsType(GameObjectType::Enemy)) {
+				Enemy *enemy = static_cast<Enemy *>(gameObjects[i]);
 				if (!enemy->IsAlive()) {
 					delete gameObjects[i];
 					gameObjects[i] = nullptr;
