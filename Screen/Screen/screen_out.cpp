@@ -26,11 +26,11 @@ public:
 	void IncreasePos() { this->pos++; }
 	void DecreasePos() { this->pos--; }
 
-	void ProcessInput(int major, int minor) {}
+	virtual void ProcessInput(int major, int minor) {}
 
-	void Update() {}
+	virtual void Update() {}
 
-	void Draw(char *canvas) const
+	virtual void Draw(char *canvas) const
 	{
 		if (pos < 0 || pos >= SCREEN_SIZE) return;
 
@@ -182,9 +182,7 @@ class GameObjectManager {
 	{
 		if (_kbhit() == 0) return;
 		int minor = 0;
-		Player *player = nullptr;
-		Enemy  *enemy = nullptr;
-		Bullet *bullet = nullptr;
+		
 
 		int major = _getch();
 		if (major == 224) minor = _getch();
@@ -195,24 +193,26 @@ class GameObjectManager {
 			obj = gameObjects[i];
 			if (obj == nullptr) continue;
 
-			Player *p = dynamic_cast<Player *>(obj);
-			if (p) {
-				p->ProcessInput(major, minor);
-				player = p;
-				continue;
-			}
-			Enemy *e = dynamic_cast<Enemy *>(obj);
-			if (e) {
-				e->ProcessInput(major, minor);
-				enemy = e;
-			}
+			obj->ProcessInput(major, minor);
 		}
 
 		if (major == ' ')
 		{
-			int i = 0;
+			Player *player = nullptr;
+			Enemy  *enemy = nullptr;
+			Bullet *bullet = nullptr;
+
+			for (int i=0; i< maxGameObjects; i++) {
+				player = dynamic_cast<Player *>(gameObjects[i]);
+				if (player) break;
+			}
+			for (int i=0; i < maxGameObjects; i++) {
+				enemy = dynamic_cast<Enemy *>(gameObjects[i]);
+				if (enemy) break;
+			}
+
 			if (player == nullptr || enemy == nullptr) return;
-			for (; i < maxGameObjects; i++)
+			for (int i=0; i < maxGameObjects; i++)
 			{
 				Bullet *bullet;
 				if (gameObjects[i] == nullptr) {
@@ -238,21 +238,7 @@ class GameObjectManager {
 		for (int i = 0; i < maxGameObjects; i++)
 		{
 			if (gameObjects[i] == nullptr) continue;
-
-			Player *p = dynamic_cast<Player *>(gameObjects[i]);
-			if (p) {
-				p->Draw(canvas);
-				continue;
-			}
-			Enemy *e = dynamic_cast<Enemy *>(gameObjects[i]);
-			if (e) {
-				e->Draw(canvas);
-				continue;
-			}
-			Bullet *b = dynamic_cast<Bullet *>(gameObjects[i]);
-			if (b) {
-				b->Draw(canvas);
-			}
+			gameObjects[i]->Draw(canvas);
 		}
 	}
 
@@ -261,24 +247,13 @@ class GameObjectManager {
 		for (int i = 0; i < maxGameObjects; i++)
 		{
 			if (gameObjects[i] == nullptr) continue;
-
-			Player *p = dynamic_cast<Player *>(gameObjects[i]);
-			if (p) {
-				p->Update();
-				continue;
-			}
-			Enemy *e = dynamic_cast<Enemy *>(gameObjects[i]);
-			if (e) {
-				e->Update();	
-				if (!e->IsAlive()) {
+			gameObjects[i]->Update();
+			Enemy *enemy = dynamic_cast<Enemy *>(gameObjects[i]);
+			if (enemy) {
+				if (!enemy->IsAlive()) {
 					delete gameObjects[i];
 					gameObjects[i] = nullptr;
 				}
-				continue;
-			}
-			Bullet *b = dynamic_cast<Bullet *>(gameObjects[i]);
-			if (b) {
-				b->Update();
 			}
 		}
 	}
