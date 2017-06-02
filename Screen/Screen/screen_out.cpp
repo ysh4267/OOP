@@ -11,23 +11,14 @@
 using namespace std;
 
 class GameObject {
-<<<<<<< HEAD
-	char 	shape[16];
-	int		pos;
-
-public:
-	GameObject(const char *shape, int pos) : pos(pos) { strcpy(this->shape, shape); }
-
-	void SetShape(const char *shape) { strcpy(this->shape, shape); }
-=======
 	string 	shape;
 	int		pos;
 
 public:
 	GameObject(const char *shape, int pos) : shape(shape), pos(pos) {}
+	virtual ~GameObject() {}
 
 	void SetShape(const char *shape) { this->shape = shape; }
->>>>>>> refs/remotes/origin/master
 
 	void SetPos(int pos) { this->pos = pos; }
 	int  GetPos() const { return this->pos; }
@@ -35,17 +26,15 @@ public:
 	void IncreasePos() { this->pos++; }
 	void DecreasePos() { this->pos--; }
 
+	void ProcessInput(int major, int minor) {}
+
 	void Update() {}
 
 	void Draw(char *canvas) const
 	{
 		if (pos < 0 || pos >= SCREEN_SIZE) return;
 
-<<<<<<< HEAD
-		strncpy(canvas + pos, shape, strlen(shape));
-=======
 		strncpy(canvas + pos, shape.c_str(), shape.size() );
->>>>>>> refs/remotes/origin/master
 	}
 };
 
@@ -53,6 +42,16 @@ class Player : public GameObject {
 
 public:
 	Player() : GameObject("^_^", rand() % SCREEN_SIZE ) {}
+
+	// overriding
+	void ProcessInput(int major, int minor)
+	{
+		if (major != 224) return;
+
+		// major == 224
+		if (minor == 75) IncreasePos();
+		else if (minor == 77) DecreasePos();
+	}
 };
 
 class Enemy : public GameObject {
@@ -67,6 +66,17 @@ public:
 		if (hp > 0) --hp;
 		if (hp <= 0) isAlive = false;
 	}
+
+	// overriding
+	void ProcessInput(int major, int minor)
+	{
+		if (major != 224) return;
+
+		// major == 224
+		if (minor == 72) IncreasePos();
+		else if (minor == 80) DecreasePos();
+	}
+	
 
 	// overriding
 	void Draw(char *canvas) const
@@ -116,7 +126,8 @@ public:
 			if (firedTicks == 0l) return;
 
 			// 만일 다음 라인을 comment out한다면 5초후 발사 기능이 사라짐.
-			if ( ((clock() - firedTicks) / CLOCKS_PER_SEC) < 5) return;
+			// bseo. I will comment out the following line to shoot the bullet when a user hits a space bar.
+			//if ( ((clock() - firedTicks) / CLOCKS_PER_SEC) < 5) return;
 
 			isFired = true;
 		}
@@ -153,93 +164,117 @@ public:
 	}
 };
 
-void clear_screen(char *canvas)
-{
-	memset(canvas, ' ', SCREEN_SIZE);
-	canvas[SCREEN_SIZE] = '\0';
-}
+class GameObjectManager {
+	GameObject**	gameObjects;
+	char*			canvas;
+	const int		screenSize;
+	int				maxGameObjects;
 
-void process_input(Player& player, Enemy& enemy, Bullet bullets[], int bullets_len)
-{
-	if (_kbhit() == 0) return;
-
-	int ch = _getch();
-	if (ch == 224)
+	void clear_screen()
 	{
-		ch = _getch();
-		switch (ch)
-		{
-		case 75:
-			player.IncreasePos();
-			break;
-		case 77:
-			player.DecreasePos();
-			break;
-		case 72:
-			enemy.IncreasePos();
-			break;
-		case 80:
-			enemy.DecreasePos();
-			break;
-		}
+		memset(canvas, ' ', screenSize);
+		canvas[screenSize] = '\0';
 	}
-	else if (ch == ' ')
+
+	void process_input()
 	{
-		for (int i = 0; i < bullets_len; i++)
+		if (_kbhit() == 0) return;
+		int minor = 0;
+
+		int major = _getch();
+		if (major == 224) minor = _getch();
+
+		static_cast<Player *>(gameObjects[0])->ProcessInput(major, minor); // downcasting
+		static_cast<Enemy *>(gameObjects[1])->ProcessInput(major, minor);  // downcasting
+
+		if (major == ' ')
 		{
-			if (bullets[i].IsUsed() == false)
+			int i = 2;
+			for (; i < maxGameObjects; i++)
 			{
-				bullets[i].Fire(player, enemy);
-				break; // exit from for statement
+				if (gameObjects[i] == nullptr) {
+					gameObjects[i] = new Bullet; // upcasting
+					break;
+				}
+				if (!static_cast<Bullet *>(gameObjects[i])->IsUsed()) break; // downcasting
 			}
+			if (i == maxGameObjects) return;
+			static_cast<Bullet *>(gameObjects[i])->Fire(*static_cast<Player *>(gameObjects[0]), *static_cast<Enemy *>(gameObjects[1])); // downcasting
 		}
 	}
-}
 
-void draw(char *canvas, const Player& player, const Enemy& enemy, const Bullet bullets[], int bullets_len)
-{
-	if (canvas == NULL) return;
-
-	player.Draw(canvas);
-	enemy.Draw(canvas);
-	for (int i= 0; i < bullets_len; i++)
+	void draw()
 	{
-		bullets[i].Draw(canvas);
+		static_cast<Player *>(gameObjects[0])->Draw(canvas); // downcasting
+		static_cast<Enemy *>(gameObjects[1])->Draw(canvas);  // downcasting
+		for (int i = 2; i < maxGameObjects; i++)
+		{
+			if (gameObjects[i] == nullptr) continue;
+			Bullet *bullet = static_cast<Bullet *>(gameObjects[i]); // downcasting
+			bullet->Draw(canvas);
+		}
 	}
-}
 
-void update(Player& player, Enemy& enemy, Bullet bullets[], int bullets_len)
-{
-	player.Update();
-	enemy.Update();
-	for (int i = 0; i < bullets_len; i++)
+	void update()
 	{
-		bullets[i].Update();
+		static_cast<Player *>(gameObjects[0])->Update(); // downcasting
+		static_cast<Enemy *>(gameObjects[1])->Update();  // downcasting
+		for (int i = 2; i < maxGameObjects; i++)
+		{
+			if (gameObjects[i] == nullptr) continue;
+			Bullet *bullet = static_cast<Bullet *>(gameObjects[i]);	 // downcasting
+			bullet->Update();
+		}
 	}
-}
 
-void render(char *canvas)
-{
-	canvas[SCREEN_SIZE] = '\0';
-	cout << canvas << '\r';
-	Sleep(33);
-}
+	void render()
+	{
+		canvas[screenSize] = '\0';
+		cout << canvas << '\r';
+		Sleep(33);
+	}
+
+public:
+	GameObjectManager(int maxGameObjects, int screen_size) 
+		: maxGameObjects(maxGameObjects), screenSize(screen_size),
+		  gameObjects(new GameObject*[maxGameObjects]),
+		  canvas(new char[screen_size+1]) 
+	{
+		for (int i = 0; i < maxGameObjects; i++) gameObjects[i] = nullptr;
+
+		gameObjects[0] = new Player; // upcasting
+		gameObjects[1] = new Enemy(10); // upcasting
+
+		clear_screen();
+	}
+
+	~GameObjectManager() 
+	{
+		for (int i=0; i < maxGameObjects; i++) {
+			if (gameObjects[i] != nullptr)
+				delete gameObjects[i]; // using "virtual" ~GameObject()
+		}
+		delete[] gameObjects;
+	}
+
+	void GameLoop()
+	{
+		while (true) {
+			clear_screen();
+			process_input();
+			draw();
+			update();
+			render();
+		}
+	}
+};
+
 
 int main()
 {
-	char	canvas[SCREEN_SIZE + 1];
-	Player player;	
-	Enemy  enemy(10);	
-	const int bullets_len = 5;
-	Bullet bullets[bullets_len];
+	GameObjectManager mgr(50, 79);
 
-	while (1)
-	{
-		clear_screen(canvas);
-		process_input(player, enemy, bullets, bullets_len);
-		draw(canvas, player, enemy, bullets, bullets_len);
-		update(player, enemy, bullets, bullets_len);
-		render(canvas);
-	}
+	mgr.GameLoop();
+	
 	return 0;
 }
