@@ -11,13 +11,13 @@
 using namespace std;
 
 class GameObject {
-	char 	shape[16];
+	string 	shape;
 	int		pos;
 
 public:
-	GameObject(const char *shape, int pos) : pos(pos) { strcpy(this->shape, shape); }
+	GameObject(const char *shape, int pos) : shape(shape), pos(pos) {}
 
-	void SetShape(const char *shape) { strcpy(this->shape, shape); }
+	void SetShape(const char *shape) { this->shape = shape; }
 
 	void SetPos(int pos) { this->pos = pos; }
 	int  GetPos() const { return this->pos; }
@@ -31,7 +31,7 @@ public:
 	{
 		if (pos < 0 || pos >= SCREEN_SIZE) return;
 
-		strncpy(canvas + pos, shape, strlen(shape));
+		strncpy(canvas + pos, shape.c_str(), shape.size() );
 	}
 };
 
